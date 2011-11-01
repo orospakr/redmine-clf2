@@ -9,8 +9,9 @@ module RedmineClf2
         base.class_eval do
           unloadable
           helper :clf2
-          cattr_accessor :subdomains, :tld_length
+          cattr_accessor :subdomains, :tld_length, :config
           load_clf2_subdomains_file
+          load_clf2_config_file
           alias_method_chain :set_localization, :clf_mods
           alias_method_chain :logged_user=, :clf_mods
           helper_method :change_locale_link
@@ -52,6 +53,16 @@ module RedmineClf2
           self.subdomains = YAML::load(File.read(subdomains_file))
         else
           logger.error "CLF2 subdomain file not found at #{domain_file}. Subdomain specific languages will not be used."
+        end
+      end
+
+      def load_clf2_config_file
+        config_file = File.join(Rails.plugins['redmine_clf2'].directory, 'config', 'config.yml')
+        if File.exists?(config_file)
+          self.config = YAML::load(File.read(config_file))
+          self.config = {} if self.config == false
+        else
+          logger.error "CLF2 config file not found at #{config_file}.  Assuming default settings."
         end
       end
     end
@@ -120,6 +131,8 @@ module RedmineClf2
         query_string = request.query_string.sub(/&lang(\=[^&]*)?(?=&|$)|^lang(\=[^&]*)?(&|$)/, '')
         url = request.url.sub(/\?.*/, '')
         url += "?#{query_string}" unless query_string.empty?
+
+        return url unless (self.config["replace_canonical_subdomains"].nil? or self.config["replace_canonical_subdomains"] == true)
 
         return url if request.domain(self.tld_length).nil?
 
