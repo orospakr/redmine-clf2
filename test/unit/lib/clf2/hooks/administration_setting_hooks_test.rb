@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../../../../test_helper'
 
-class Clf2::Hooks::AdministrationSettingHooksTest < ActionController::TestCase
+class RedmineClf2::Hooks::AdministrationSettingHooksTest < ActionController::TestCase
   include Redmine::Hook::Helper
   def controller
     @controller ||= SettingsController.new

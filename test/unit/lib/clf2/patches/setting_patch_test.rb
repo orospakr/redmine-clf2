@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../../../../test_helper'
 
-class Clf2::Patches::SettingPatchTest < ActionController::TestCase
+class RedmineClf2::Patches::SettingPatchTest < ActionController::TestCase
   include Redmine::I18n
 
   ENGLISH_TEXT = "English welcome_text"
