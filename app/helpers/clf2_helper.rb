@@ -12,6 +12,7 @@ module Clf2Helper
     menu_items_for(menu, project) do |menu_node|
       caption, url, selected = extract_node_details(menu_node, project)
 
+      url += "?nowelcome=true" if menu_node.name == :home
       links << content_tag('li', link_to(
         h(caption),
         url,
