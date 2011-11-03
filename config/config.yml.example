@@ -1,1 +1,5 @@
 replace_canonical_subdomains: true
+
+# length of TLD elements in the domain (that are expected to be
+# appended onto the domains provided by subdomains.yml)
+tld_length: 2

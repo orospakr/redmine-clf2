@@ -15,7 +15,7 @@ module RedmineClf2
           alias_method_chain :set_localization, :clf_mods
           alias_method_chain :logged_user=, :clf_mods
           helper_method :change_locale_link
-          self.tld_length = 2
+          self.tld_length = self.config["tld_length"].nil? ? 2 : Integer(self.config["tld_length"])
         end
       end
     end
@@ -47,8 +47,8 @@ module RedmineClf2
       # Load the subdomains.yml file to configure the subdomain
       # to language mapping.  In development mode this will be
       # reloaded with each request but in production, it will be cached.
-      def load_clf2_subdomains_file
-        subdomains_file = File.join(Rails.plugins['redmine_clf2'].directory,'config','subdomains.yml')
+      def load_clf2_subdomains_file(subdomains_file = nil)
+        subdomains_file ||= File.join(Rails.plugins['redmine_clf2'].directory,'config','subdomains.yml')
         if File.exists?(subdomains_file)
           self.subdomains = YAML::load(File.read(subdomains_file))
         else
@@ -56,14 +56,14 @@ module RedmineClf2
         end
       end
 
-      def load_clf2_config_file
-        config_file = File.join(Rails.plugins['redmine_clf2'].directory, 'config', 'config.yml')
+      def load_clf2_config_file(config_file = nil)
+        config_file ||= File.join(Rails.plugins['redmine_clf2'].directory, 'config', 'config.yml')
         if File.exists?(config_file)
           self.config = YAML::load(File.read(config_file))
-          self.config = {} if self.config == false
         else
           logger.error "CLF2 config file not found at #{config_file}.  Assuming default settings."
         end
+        self.config = {} unless self.config
       end
     end
     
@@ -79,6 +79,22 @@ module RedmineClf2
         head :moved_permanently, :location => url 
       end
 
+      def set_nowelcome_in_query(q, v = true)
+        query = Rack::Utils.parse_query(q)
+        if v
+          query["nowelcome"] = true
+        else
+          query.delete("nowelcome")
+        end
+        return query.to_query()
+      end
+
+      def set_nowelcome_in_url(p, v = true)
+        urlp = URI.parse(p)
+        urlp.query = set_nowelcome_in_query(urlp.query, v)
+        return urlp.to_s()
+      end
+
       # Override this method to determine the locale from the URL
       def set_localization_with_clf_mods
         begin
@@ -87,12 +103,11 @@ module RedmineClf2
           ActionController::Base.session_options = {:domain => request.domain(self.tld_length)}
         end
 
-        if params[:lang]
-          session[:language] = params[:lang]
-        end
-
-        if request.get? && canonical_url != request.url
-          head :moved_permanently, :location => canonical_url 
+        # if user is logged in (and request is GET), strip off the
+        # annoying and unnecessary nowelcome parameter
+        if request.get? and User.current.logged? and ActiveRecord::ConnectionAdapters::Column.value_to_boolean(params["nowelcome"])
+          q = set_nowelcome_in_query(request.query_string, false)
+          head :moved_permanently, :location => q.length === 0 ? request.path : request.path + "?" + q
         end
 
         set_language_if_valid(locale_from_url) 
@@ -107,7 +122,6 @@ module RedmineClf2
         else
           User.current = User.anonymous
         end
-        session[:language] = locale_from_url
       end
 
       def canonical_url(locale = nil)
@@ -147,17 +161,12 @@ module RedmineClf2
       end
 
       def change_locale_link(locale)
-        request.path + "?#{request.query_string}&lang=#{locale}"
+        return set_nowelcome_in_url(canonical_url(locale))
       end
 
       private
 
       def locale_from_url
-        # If an explicit lang parameter is provided, it takes precedence over the subdomain
-        if params[:lang] && I18n.available_locales.include?(params[:lang].to_sym)
-          return params[:lang]
-        end
-
         if request.domain(self.tld_length).nil?
           locales = self.subdomains.keys
         else
@@ -170,11 +179,7 @@ module RedmineClf2
           }
         end
 
-        if locales.length > 1 && session[:language]
-          session[:language]
-        else
-          locales.first
-        end
+        locales.first
       end
     end # InstanceMethods
   end

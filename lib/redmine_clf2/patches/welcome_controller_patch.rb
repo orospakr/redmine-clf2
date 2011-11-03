@@ -13,9 +13,12 @@ module RedmineClf2
 
     module InstanceMethods
       def index_with_clf_mods
-        if session[:language]
+        if ActiveRecord::ConnectionAdapters::Column.value_to_boolean(params["nowelcome"]) or User.current.logged?
           @news = News.latest(User.current).select{|n| n.project.to_s == 'IRCan Franchise of TBS'}
         else
+          @lang_en = {:url => set_nowelcome_in_url(canonical_url("en")), :name => "English", :title => "English - English version of the Web site"}
+          @lang_fr = {:url => set_nowelcome_in_url(canonical_url("fr")), :name => "Français", :title => "Français - Version française de ce site Web"}
+            
           render :action => 'welcome', :layout => 'wp-pa' 
         end
       end

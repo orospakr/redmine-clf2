@@ -1,7 +1,7 @@
 # Mapping subdomains to locales
 # The first subdomain listed will be considered canonical
 en: 
-  - 'localhost'
+  - 'tbs-sct.ircan-rican'
   - 'ircan' 
 fr: 
   - 'sct-tbs.rican-ircan'
